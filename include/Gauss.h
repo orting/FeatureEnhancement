@@ -26,17 +26,4 @@ namespace gauss {
   double dxy(double x, double y, double z, int scale);
   double dxz(double x, double y, double z, int scale);
   double dyz(double x, double y, double z, int scale);
-
-  // Gaussian Kernels. They are symmetric in size
-  // 1D 
-  std::vector<double> 
-  kernel_1d(double (&filter_function)(double, int), int scale);
-
-  // 2D 
-  std::vector< std::vector<double> >
-  kernel_2d(double (&filter_function)(double, double, int), int scale);
-  
-  // 3D 
-  std::vector< std::vector< std::vector<double> > > 
-  kernel_3d(double (&filter_function)(double, double, double, int), int scale);
 }
