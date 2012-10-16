@@ -2,13 +2,15 @@
 #include <math.h>
 
 namespace gauss {
-  // 1D gaussian
+  //
+  // 1D 
+  //
   double gauss(double x, int scale) {
     static double const const_normalise = 0.3989422804014327; // = 1 / sqrt(2*pi)
     return (const_normalise / scale) * exp((-(x*x)) / (2 * scale * scale));
   }
 
-  // 1D first order gaussian derivatives
+  // 1D first order derivatives
   double dx(double x, int scale) {
     static double const const_normalise = 0.3989422804014327; // = 1 / sqrt(2*pi)
     double scale_squared = scale * scale;
@@ -20,7 +22,9 @@ namespace gauss {
   }
 
 
-  // 2D gaussian
+  //
+  // 2D
+  //
   double gauss(double x, double y, int scale) {
     static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
     double scale_squared = scale * scale;
@@ -67,8 +71,10 @@ namespace gauss {
       exp((-(x*x) - (y*y)) / (2 * scale_squared));
   }
 
-
-  // 3D gaussian
+  
+  //
+  // 3D
+  //
   double gauss(double x, double y, double z, int scale) {
     static double const const_normalise = 0.06349363593424098; // = 1 / (sqrt(2*pi)^3)
     double scale_squared = scale * scale;
@@ -76,7 +82,7 @@ namespace gauss {
     return (const_normalise / scale_cubed) * exp((-(x*x) - (y*y) - (z*z) ) / (2 * scale_squared));
   }
 
-  // 3D first order gaussians derivatives
+  // 3D first order derivatives
   double dx(double x, double y, double z, int scale) {
     static double const const_normalise = 0.06349363593424098; // = 1 / (sqrt(2*pi)^3)
     double scale_squared = scale * scale;
@@ -95,7 +101,7 @@ namespace gauss {
     return dx(z, y, x, scale);
   }
 
-  // 3D second order gaussian derivatives
+  // 3D second order derivatives
   double dxx(double x, double y, double z, int scale) {
     static double const const_normalise = 0.06349363593424098; // = 1 / (sqrt(2*pi)^3)
     double scale_squared = scale * scale;

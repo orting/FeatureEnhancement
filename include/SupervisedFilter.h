@@ -3,48 +3,14 @@
 #include <cstdio>
 #include <tuple>
 #include <utility>
-#include "Classifier.h"
-#include "Filter.h"
-#include "GaussFilter.h"
+
 #include "pechin_wrap.h"
 
+#include "Classifier.h"
+#include "Feature.h"
+//#include "Util.h"
+
 namespace feature_enhancement {
-  enum Feature {
-    Identity,
-    Gauss,
-    GaussDx,
-    GaussDy,
-    GaussDz,
-    GaussDxx,
-    GaussDxy,
-    GaussDxz,
-    GaussDyy,
-    GaussDyz,
-    GaussDzz,
-    Gradient,
-    HessianEig1,
-    HessianEig2,
-    HessianEig3,
-    OutOfBounds
-  };
-
-  Feature& operator++(Feature& orig)  {
-    if (orig < Feature::OutOfBounds) {
-      orig = static_cast<Feature>(orig + 1);
-    }
-    else {
-      orig = Feature::Identity;
-    }
-    return orig;
-  }
-
-  Feature operator++(Feature& orig, int) {
-    Feature rVal = orig;
-    ++orig;
-    return rVal;
-  }
-
-
   struct Point3D {
     int x, y, z;
   };
@@ -52,7 +18,6 @@ namespace feature_enhancement {
   struct Point4D {
     int x, y, z, c;
   };
-
 
   class SupervisedFilter {
   public:
@@ -93,10 +58,6 @@ namespace feature_enhancement {
     Classifier classifier;
   };
 
-}
-
-
-
   /*
   enum Scale {
     A,
@@ -123,3 +84,5 @@ namespace feature_enhancement {
   }*/
 
 
+
+}

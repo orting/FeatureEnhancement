@@ -7,27 +7,29 @@
 
 #include "pechin_wrap.h"
 
-#include "GaussFilter.h"
+#include "Feature.h"
+#include "Filter.h"
+#include "Gauss.h"
 #include "SupervisedFilter.h"
 #include "Util.h"
 
 using namespace feature_enhancement;
+
 
 SupervisedFilter::SupervisedFilter():
   trained(false), feature_matrix(), stored(), classifier()
 {}
 
 
-//Apply the filter to the given volume
+// Apply the filter to the given volume
 void SupervisedFilter::apply(cimg_library::CImg<short> &volume, 
 			     cimg_library::CImg<unsigned char> const &segmentation) {
-  
-  if (! this->trained) {
+  if (this->trained) {
+    this->calculate_features(volume);
+    this->classify(volume);
+  } else {
     std::cerr << "Filter has not been trained. Aborting" << std::endl;
-    return;
   }
-  this->calculate_features(volume);
-  this->classify(volume);
 }
 
 
@@ -53,13 +55,14 @@ void SupervisedFilter::train(std::vector<std::string> const &filenames) {
   int point_number = 0;
   for (auto filename : filenames) {
     std::pair< std::string, std::vector<Point4D> > parsed = parse(filename);
+    std::cout << parsed.first << std::endl;
     cimg_library::CImg<short> volume(parsed.first.c_str());
     this->calculate_features(volume);
 
     classification_matrix.resize(classification_matrix.size() + parsed.second.size());
 
     for (int scale = 0; scale < 4; ++scale) {
-      for (Feature f = Feature::Gauss; f < Feature::OutOfBounds; ++f) {
+      for (Feature f = Feature::Identity; f < Feature::OutOfBounds; ++f) {
 	if (this->feature_matrix[f][scale]) {
 	  int j = point_number;
 	  for (auto point : parsed.second) {
@@ -129,7 +132,6 @@ void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
     this->store(Feature::Identity, 0, volume);
   }
 
-  GaussFilter3D gauss;
   for (int i = 0; i < 4; ++i) {
     int scale = std::pow(2, i); // Temporary hack, not clear what is actually needed
     int j;
@@ -137,15 +139,15 @@ void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
     if (this->feature_matrix[Feature::Gradient][i]) {
       cimg_library::CImgList<short> first_order(3, volume);
       cimg_library::CImg<short> gradient(volume);
-      gauss.apply_dx(first_order(0), scale);
-      gauss.apply_dy(first_order(1), scale);
-      gauss.apply_dz(first_order(2), scale);
+      filter::apply(first_order(0), scale, gauss::dx);
+      filter::apply(first_order(1), scale, gauss::dy);
+      filter::apply(first_order(2), scale, gauss::dz);
       cimg_forXYZ(gradient, x, y, z) {
 	gradient(x,y,z) = calculate_gradient(first_order(0)(x,y,z), 
 					     first_order(1)(x,y,z), 
 					     first_order(2)(x,y,z));
       }
-      this->store(Feature::Gradient, scale, gradient);
+      this->store(Feature::Gradient, i, gradient);
       j = 0;
       for (Feature f = Feature::GaussDx; f <= Feature::GaussDz; ++f, ++j) {
 	if (this->feature_matrix[f][i]) {
@@ -159,16 +161,16 @@ void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
 	this->feature_matrix[Feature::HessianEig2][i] || 
 	this->feature_matrix[Feature::HessianEig3][i] ) {
       cimg_library::CImgList<short> second_order(6, volume);
-      gauss.apply_dxx(second_order(0), scale);
-      gauss.apply_dxy(second_order(1), scale);
-      gauss.apply_dxz(second_order(2), scale);
-      gauss.apply_dyy(second_order(3), scale);
-      gauss.apply_dyz(second_order(4), scale);
-      gauss.apply_dzz(second_order(5), scale);
+      filter::apply(second_order(0), scale, gauss::dxx);
+      filter::apply(second_order(1), scale, gauss::dxy);
+      filter::apply(second_order(2), scale, gauss::dxz);
+      filter::apply(second_order(3), scale, gauss::dyy);
+      filter::apply(second_order(4), scale, gauss::dyz);
+      filter::apply(second_order(5), scale, gauss::dzz);
 
       std::array<double, 6> hessian;
       std::array<double, 3> eigenvalues;
-      cimg_library::CImgList<short> eigens;
+      cimg_library::CImgList<short> eigens(3);
       j = 0;
       for (Feature f = Feature::HessianEig1; f <= Feature::HessianEig3; ++f, ++j) {
 	if (this->feature_matrix[f][i]) {
@@ -204,23 +206,23 @@ void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
       }
     }
     // I really need to find a nice way of doing this
-    std::vector<GaussFilter3D::FilterFunction> gfs;
+    std::vector<double(*)(double,double,double,int)> gfs;
     gfs.resize(Feature::GaussDzz + 1);
-    gfs[Feature::Gauss] = &GaussFilter3D::gauss;
-    gfs[Feature::GaussDx] = &GaussFilter3D::dx;
-    gfs[Feature::GaussDy] = &GaussFilter3D::dy;
-    gfs[Feature::GaussDz] = &GaussFilter3D::dz;
-    gfs[Feature::GaussDxx] = &GaussFilter3D::dxx;
-    gfs[Feature::GaussDxy] = &GaussFilter3D::dxy;
-    gfs[Feature::GaussDxz] = &GaussFilter3D::dxz;
-    gfs[Feature::GaussDyy] = &GaussFilter3D::dyy;
-    gfs[Feature::GaussDyz] = &GaussFilter3D::dyz;
-    gfs[Feature::GaussDzz] = &GaussFilter3D::dzz;
+    gfs[Feature::Gauss] = &gauss::gauss;
+    gfs[Feature::GaussDx] = &gauss::dx;
+    gfs[Feature::GaussDy] = &gauss::dy;
+    gfs[Feature::GaussDz] = &gauss::dz;
+    gfs[Feature::GaussDxx] = &gauss::dxx;
+    gfs[Feature::GaussDxy] = &gauss::dxy;
+    gfs[Feature::GaussDxz] = &gauss::dxz;
+    gfs[Feature::GaussDyy] = &gauss::dyy;
+    gfs[Feature::GaussDyz] = &gauss::dyz;
+    gfs[Feature::GaussDzz] = &gauss::dzz;
 
     for (Feature f = Feature::Gauss; f <= Feature::GaussDzz; ++f) {
       if (this->feature_matrix[f][i] && !this->is_stored(f, i)) {
 	cimg_library::CImg<short> current(volume);
-	gauss.apply(current, scale, gfs[f]);
+	filter::apply(current, scale, *(gfs[f]));
 	this->store(f, i, current);
       }
     }
@@ -264,7 +266,10 @@ long to_offset(int x, int y, int z, int w, int h) {
 short SupervisedFilter::get_feature(Feature f, int scale, int x, int y, int z) {
   // assert(x < this->stored[f][scale].x && y < this->stored[f][scale].y && z this->stored[f][scale].z);
   long offset = to_offset(x, y, z, this->stored[f][scale].first.x, this->stored[f][scale].first.y);
-  fseek(this->stored[f][scale].second, sizeof(short) * offset, SEEK_SET);
+  std::cout << "this->stored[" << f << "][" << scale << "].second = " << this->stored[f][scale].second 
+	    << "\n(x, y, z) = (" << x << ", " << y << ", " << z 
+	    << ")\noffset = " << offset << std::endl;
+    fseek(this->stored[f][scale].second, sizeof(short) * offset, SEEK_SET);
 
   short feature;
   fread(&feature, sizeof(short), 1, this->stored[f][scale].second);

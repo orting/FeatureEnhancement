@@ -11,16 +11,29 @@ int main(int argc, char *argv[]) {
   const char* training_file = cimg_option("-t", (char *)0, "Training file");
   //const char* featurefile     = cimg_option("-f", (char*)0, "File containing list of features to use");
 
-  if (infile == 0 || seg_infile == 0) {
+  if (infile == 0 && training_file == 0) {
     std::cerr << "Not enough arguments. Use -h to get help" << std::endl;
     return -1;
   }
 
+  
   std::vector<std::string> training_files;
   training_files.push_back(std::string(training_file));
   feature_enhancement::SupervisedFilter filter;
+
+  filter.add_feature(feature_enhancement::Feature::Identity, 0);
+  filter.add_feature(feature_enhancement::Feature::GaussDyz, 0);
+  filter.add_feature(feature_enhancement::Feature::GaussDzz, 0);
+  filter.add_feature(feature_enhancement::Feature::Gradient, 0);
+  filter.add_feature(feature_enhancement::Feature::Gradient, 3);
+  filter.add_feature(feature_enhancement::Feature::HessianEig1, 1);
+  filter.add_feature(feature_enhancement::Feature::HessianEig1, 2);
+  filter.add_feature(feature_enhancement::Feature::HessianEig2, 0);
+  filter.add_feature(feature_enhancement::Feature::HessianEig2, 1);
+
   filter.train(training_files);
 
+  /*
   cimg_library::CImg<short> volume(infile);
   cimg_library::CImg<unsigned char> segmentation(seg_infile);
 
@@ -31,6 +44,6 @@ int main(int argc, char *argv[]) {
     volume.save(outfile);
   }
   volume.display();  
-
+  */
   return 0;
 }

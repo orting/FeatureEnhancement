@@ -1,13 +1,12 @@
 #pragma once
 #include "pechin_wrap.h"
-#include "GaussFilter.h"
 
 namespace feature_enhancement {
   class AutomaticFilter {
   public:
     typedef double (AutomaticFilter::*FeatureMeassure)(double, double, double, double) const;
     AutomaticFilter();
-    ~AutomaticFilter();
+    ~AutomaticFilter(){};
 
     void apply(cimg_library::CImg<short> &volume,
 	       cimg_library::CImg<unsigned char> const &segmentation,
@@ -15,9 +14,12 @@ namespace feature_enhancement {
 	       int scale = 1,
 	       bool use_fft = false);
 
-    void set_featureness(FeatureMeassure feature_meassure) {
-      this->feature_meassure = feature_meassure;
-    }
+    void apply(cimg_library::CImg<short> &volume,
+	       double threshhold,
+	       int scale = 1,
+	       bool use_fft = false);
+
+    void set_featureness(FeatureMeassure feature_meassure);
 
     double fissureness_rikxoort(double voxel_value, double eig1, double eig2, double eig3) const;
     double fissureness_lassen(double voxel_value, double eig1, double eig2, double eig3) const;

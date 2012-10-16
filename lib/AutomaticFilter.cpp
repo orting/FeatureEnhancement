@@ -1,17 +1,22 @@
 #include <math.h>
 #include <array>
-#include "AutomaticFilter.h"
+
 #include "pechin_wrap.h"
-#include "GaussFilter.h"
+
+#include "AutomaticFilter.h"
+#include "Filter.h"
+#include "Gauss.h"
 #include "Util.h"
 
 using namespace feature_enhancement;
+
+
+typedef std::vector< std::vector< std::vector<double> > > Vector3D;
 
 AutomaticFilter::AutomaticFilter():
   feature_meassure(&AutomaticFilter::fissureness_rikxoort)
 {}
 
-AutomaticFilter::~AutomaticFilter() {}
 
 void AutomaticFilter::apply(cimg_library::CImg<short> &volume, 
 			    cimg_library::CImg<unsigned char> const &segmentation,
@@ -24,6 +29,20 @@ void AutomaticFilter::apply(cimg_library::CImg<short> &volume,
   else {
     this->apply_no_fft(volume, segmentation, threshhold, scale);
   }
+}
+
+void AutomaticFilter::apply(cimg_library::CImg<short> &volume, 
+			    double threshhold,
+			    int scale,
+			    bool use_fft) {
+  cimg_library::CImg<unsigned char> segmentation(volume, "xyz", 1);
+  this->apply(volume, segmentation, threshhold, scale, use_fft);
+}
+
+
+
+void AutomaticFilter::set_featureness(FeatureMeassure feature_meassure) {
+  this->feature_meassure = feature_meassure;
 }
 
 
@@ -89,15 +108,14 @@ void AutomaticFilter::apply_fft(cimg_library::CImg<short> &volume,
 				double threshhold,
 				int scale) {
   BoundingCube cube = get_bounding_cube(segmentation);
-  GaussFilter3D gauss;
   cimg_library::CImgList<short> features(6, volume.get_crop(cube.start_x, cube.start_y, cube.start_z,
 							    cube.end_x, cube.end_y, cube.end_z));
-  gauss.apply_dxx(features(0), scale);
-  gauss.apply_dxy(features(1), scale);
-  gauss.apply_dxz(features(2), scale);
-  gauss.apply_dyy(features(3), scale);
-  gauss.apply_dyz(features(4), scale);
-  gauss.apply_dzz(features(5), scale);
+  filter::apply(features(0), scale, gauss::dxx);
+  filter::apply(features(1), scale, gauss::dxy);
+  filter::apply(features(2), scale, gauss::dxz);
+  filter::apply(features(3), scale, gauss::dyy);
+  filter::apply(features(4), scale, gauss::dyz);
+  filter::apply(features(5), scale, gauss::dzz);
 
   std::array<double, 6> hessian;
   std::array<double, 3> eigenvalues;
@@ -141,14 +159,13 @@ void AutomaticFilter::apply_no_fft(cimg_library::CImg<short> &volume,
 				   double threshhold,
 				   int scale) {
   cimg_library::CImg<short> feature(volume, "xyz", -1000);
-
-  GaussFilter3D gauss;
-  std::vector<double> dxx(gauss.get_kernel(&GaussFilter3D::dxx, scale));
-  std::vector<double> dxy(gauss.get_kernel(&GaussFilter3D::dxy, scale));
-  std::vector<double> dxz(gauss.get_kernel(&GaussFilter3D::dxz, scale));
-  std::vector<double> dyy(gauss.get_kernel(&GaussFilter3D::dyy, scale));
-  std::vector<double> dyz(gauss.get_kernel(&GaussFilter3D::dyz, scale));
-  std::vector<double> dzz(gauss.get_kernel(&GaussFilter3D::dzz, scale));
+  
+  Vector3D dxx(filter::kernel_3d(gauss::dxx, scale));
+  Vector3D dxy(filter::kernel_3d(gauss::dxy, scale));
+  Vector3D dxz(filter::kernel_3d(gauss::dxz, scale));
+  Vector3D dyy(filter::kernel_3d(gauss::dyy, scale));
+  Vector3D dyz(filter::kernel_3d(gauss::dyz, scale));
+  Vector3D dzz(filter::kernel_3d(gauss::dzz, scale));
  
   std::array<double,6> hessian;
   std::array<double, 3> eigenvalues;
@@ -160,16 +177,15 @@ void AutomaticFilter::apply_no_fft(cimg_library::CImg<short> &volume,
     if (segmentation(x,y,z) > 0) {
       voxel_value = volume(x,y,z);
       hessian[0] = hessian[1] = hessian[2] = hessian[3] = hessian[4] = hessian[5] = 0;
-      for (int ii = 0, i = x - width; i <= x + width; ++i) {
-	for (int j = y - width; j <= y + width; ++j) {
-	  for (int k = z - width; k <= z + width; ++k) {
-	    hessian[0] +=  volume(i, j, k) * dxx[ii];
-	    hessian[1] +=  volume(i, j, k) * dxy[ii];
-	    hessian[2] +=  volume(i, j, k) * dxz[ii];
-	    hessian[3] +=  volume(i, j, k) * dyy[ii];
-	    hessian[4] +=  volume(i, j, k) * dyz[ii];
-	    hessian[5] +=  volume(i, j, k) * dzz[ii];
-	    ++ii;
+      for (int ii = 0, i = x - width; i <= x + width; ++i, ++ii) {
+	for (int jj = 0, j = y - width; j <= y + width; ++j, ++jj) {
+	  for (int kk = 0, k = z - width; k <= z + width; ++k, ++kk) {
+	    hessian[0] +=  volume(i, j, k) * dxx[ii][jj][kk];
+	    hessian[1] +=  volume(i, j, k) * dxy[ii][jj][kk];
+	    hessian[2] +=  volume(i, j, k) * dxz[ii][jj][kk];
+	    hessian[3] +=  volume(i, j, k) * dyy[ii][jj][kk];
+	    hessian[4] +=  volume(i, j, k) * dyz[ii][jj][kk];
+	    hessian[5] +=  volume(i, j, k) * dzz[ii][jj][kk];
 	  }
 	}
       }

@@ -98,8 +98,7 @@ LIBS = -lX11\
 
 vpath %.cpp ${PECHIN_DIR}
 
-CPPFLAGS = -Wno-deprecated -frounding-math -fpermissive -Wall -Wextra -std=c++11 -O2
-#  -g 
+CPPFLAGS = -Wno-deprecated -frounding-math -fpermissive -Wall -Wextra -std=c++11 -O2 -g 
 
 #TARGET=filter
 
@@ -109,7 +108,8 @@ OBJECTS=string_functions.o\
 	file_functions.o\
 	ced.o\
 	lib/Util.o\
-	lib/GaussFilter.o\
+	lib/Feature.o\
+	lib/Gauss.o\
 	lib/AutomaticFilter.o\
 	lib/SupervisedFilter.o\
 	lib/Classifier.o
@@ -123,6 +123,10 @@ supervised: supervised.o ${OBJECTS}
 automatic: automatic.o ${OBJECTS}
 	@echo Linking $@ from $<.
 	@g++ $< ${OBJECTS} ${LIB_DIRS} ${LIBS} -o $@
+
+classify_training: classify_training.o string_functions.o random_generator.o nr_eigen.o file_functions.o ced.o
+	@echo Linking $@ from $<.
+	@g++ classify_training.o string_functions.o random_generator.o nr_eigen.o file_functions.o ced.o ${LIB_DIRS} ${LIBS} -o $@
 
 %.o: %.cpp
 	@echo Compiling $@ from $<.
