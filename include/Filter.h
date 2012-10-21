@@ -120,7 +120,7 @@ namespace filter {
   }
 
 
-  // Apply the filter given by the filter to the volume
+  // Apply the filter given by the filter_function to the volume
   template<typename CImgType, typename NumType>
   void apply(cimg_library::CImg<CImgType> &volume, 
 	     int scale, 

@@ -94,7 +94,8 @@ LIBS = -lX11\
 	   -litkzlib\
 	   -lITKCommon\
 	   -luuid\
-	   -lfftw3
+	   -lfftw3\
+	   -lhdf5
 
 vpath %.cpp ${PECHIN_DIR}
 
@@ -127,6 +128,10 @@ automatic: automatic.o ${OBJECTS}
 classify_training: classify_training.o string_functions.o random_generator.o nr_eigen.o file_functions.o ced.o
 	@echo Linking $@ from $<.
 	@g++ classify_training.o string_functions.o random_generator.o nr_eigen.o file_functions.o ced.o ${LIB_DIRS} ${LIBS} -o $@
+
+test: test.o ${OBJECTS}
+	@echo Linking $@ from $<.
+	@g++ $< ${OBJECTS} ${LIB_DIRS} ${LIBS} -o $@
 
 %.o: %.cpp
 	@echo Compiling $@ from $<.
