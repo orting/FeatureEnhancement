@@ -1,3 +1,4 @@
+#pragma once
 #include <complex>
 #include <fftw3.h>
 #include "pechin_wrap.h"
@@ -46,7 +47,7 @@ namespace filter {
   // 3D Kernel
   template <typename NumType>
   std::vector< std::vector< std::vector<NumType> > > 
-  kernel_3d(NumType (&filter_function)(NumType, NumType, NumType, int), int scale) {
+  kernel_3d(NumType (&filter_function)(NumType, NumType, NumType, int),  int scale) {
     int width = 2 * 3 * scale + 1;
 
     std::vector< std::vector< std::vector<NumType> > > kernel;
@@ -60,7 +61,7 @@ namespace filter {
       int i = 0;
       for (NumType y = -3*scale; y <= 3*scale; y += 1) {
 	int j = 0;
-	for (NumType z = -3*scale; z <= 3*scale; z += 1) {     
+	for (NumType z = -3*scale; z <= 3*scale; z += 1) {
 	  zs[j++] = filter_function(x, y, z, scale);
 	}
 	ys[i++] = zs;
@@ -71,50 +72,47 @@ namespace filter {
     return kernel;
   }
 
+  template <typename NumType>
+  void kernel_3d(NumType (&filter_function)(NumType, NumType, NumType, int), 
+		 int scale,
+		 cimg_library::CImg<NumType> &out,
+		 size_t out_w, size_t out_h, size_t out_d) {
+    
+    int half_w = out_w / 2;
+    int half_h = out_h / 2;
+    int half_d = out_d / 2;
+    int kernel_size = 3 * scale;
 
-  // Helper functions for apply
-  namespace {
-    template<typename NumType>  
-    void center_fft(cimg_library::CImg<NumType> &vol, int w, int h, int d) {
-      d = std::min(d, vol.depth());
-      h = std::min(h, vol.height());
-      w = std::min(w, vol.width());
-      double tmp;
-      for (int z = 0; z < d; ++z) {
-	for (int y = 0; y < h; ++y) {
-	  for (int x = 0, xx = w/2; xx < w; ++x, ++xx) {
-	    tmp = vol(x,y,z);
-	    vol(x,y,z) = vol(xx,y,z);
-	    vol(xx,y,z) = tmp;
-	  }
-	}
-      }
-      for (int z = 0; z < d; ++z) {
-	for (int y = 0, yy = h/2; yy < h; ++y, ++yy) {
-	  for (int x = 0; x < w; ++x) {
-	    tmp = vol(x,y,z);
-	    vol(x,y,z) = vol(x,yy,z);
-	    vol(x,yy,z) = tmp;
-	  }
-	}
-      }
-      for (int z = 0, zz = d/2; zz < d; ++z, ++zz) {
-	for (int y = 0; y < h; ++y) {
-	  for (int x = 0; x < w; ++x) {
-	    tmp = vol(x,y,z);
-	    vol(x,y,z) = vol(x,y,zz);
-	    vol(x,y,zz) = tmp;
-	  }
+    int i =  kernel_size > half_w ? 0 : half_w - kernel_size;
+    for (NumType x = - kernel_size; x <= kernel_size; x += 1, ++i) {
+      int j =  kernel_size > half_h ? 0 : half_h - kernel_size;
+      for (NumType y = -kernel_size; y <= kernel_size; y += 1, ++j) {
+	int k =  kernel_size > half_d ? 0 : half_d - kernel_size;
+	for (NumType z = -kernel_size; z <= kernel_size; z += 1, ++k) {
+	  out(i, j, k) = filter_function(x, y, z, scale);
 	}
       }
     }
+  }
+  
 
+  // Helper function for apply
+  namespace {
     template<typename NumType1, typename NumType2>
     void normalise_and_copy(cimg_library::CImg<NumType1> const &src,
 			    cimg_library::CImg<NumType2> &dst) {
-      double scale = dst.width() * dst.height() * dst.depth();
+      int w = dst.width();
+      int h = dst.height();
+      int d = dst.depth();
+      int half_w = w % 2 ? w/2 + 1: w/2;
+      int half_h = h % 2 ? h/2 + 1: h/2;
+      int half_d = d % 2 ? d/2 + 1: d/2;
+      double scale = w * h * d;
       cimg_forXYZ(dst, x, y, z) {
-	dst(x, y, z) = static_cast<NumType2>(src(x,y,z) / scale);	
+	int xx = (x + half_w) % w;
+	int yy = (y + half_h) % h;
+	int zz = (z + half_d) % d;
+	dst(x, y, z) = static_cast<NumType2>(src(xx,yy,zz) / scale);	
       }
     }
   }
@@ -126,64 +124,53 @@ namespace filter {
 	     int scale, 
 	     NumType (&filter_function)(NumType, NumType, NumType, int)) {
 
-    int w = volume.width();
-    int h = volume.height();
-    int d = volume.depth();
+    unsigned int w = volume.width();
+    unsigned int padded_w = 2 * (w / 2 + 1);
+    unsigned int h = volume.height();
+    unsigned int d = volume.depth();
 
-    cimg_library::CImg<double> complex_volume(2*(w/2 + 1), h, d);
-    cimg_library::CImg<double> filter(2*(w/2 + 1), h, d);
+    // CImg uses column-major order, fftw exspects row-major, 
+    // so the 1 dimension of CImg is padded as it is passed as the last to fftw
+    cimg_library::CImg<double> padded(padded_w, h, d);
+    cimg_library::CImg<double> filter(padded_w, h, d);
 
     // transform the filter
-    double *fft_filter_real = filter.data();
-    fftw_complex *fft_filter_complex = (fftw_complex *) filter.data();
-    fftw_plan filter_forward = fftw_plan_dft_r2c_3d(d, h, w, fft_filter_real, fft_filter_complex, FFTW_ESTIMATE);
+    double *filter_in = filter.data();
+    fftw_complex *filter_out = reinterpret_cast<fftw_complex *>(filter.data());
+    fftw_plan filter_forward = fftw_plan_dft_r2c_3d(d, h, w, filter_in, filter_out, FFTW_ESTIMATE);
 
-    // Transform the volume
-    double *fft_volume_real = complex_volume.data();
-    fftw_complex *fft_volume_complex = (fftw_complex *) complex_volume.data();
-    fftw_plan volume_forward = fftw_plan_dft_r2c_3d(d, h, w, fft_volume_real, fft_volume_complex, FFTW_ESTIMATE);
-    fftw_plan volume_backward = fftw_plan_dft_c2r_3d(d, h, w, fft_volume_complex, fft_volume_real, FFTW_ESTIMATE);
-
-    cimg_forXYZ(volume, x, y, z) {
-      complex_volume(x,y,z) = volume(x,y,z);
-    }
-
-
-    int wc = w/2;
-    int hc = h/2;
-    int dc = d/2;
-    int window = 20 * scale; // We do ± 3 standard deviations ??
-    int start_x = wc - window > 0 ? - window : - wc;
-    int start_y = hc - window > 0 ? - window : - hc;
-    int start_z = dc - window > 0 ? - window : - dc;
-    int end_x = wc + window < w ? window : wc;
-    int end_y = hc + window < h ? window : hc;
-    int end_z = dc + window < d ? window : dc;
-
-    for (int x = start_x, i = wc + start_x; x <= end_x; ++x, ++i) {
-      for (int y = start_y, j = hc + start_y; y <= end_y; ++y, ++j) {
-	for (int z = start_z, k = dc + start_z; z <= end_z; ++z, ++k) {
-	  filter(i, j, k) = filter_function(x, y, z, scale);
-	}
-      }
-    }
+    kernel_3d(filter_function, scale, filter, w, h, d);
 
     fftw_execute(filter_forward);
-    fftw_execute(volume_forward);
-
     fftw_destroy_plan(filter_forward);
-    fftw_destroy_plan(volume_forward);
 
-    int size = (filter.width()/2) * filter.height() * filter.depth();
-    std::complex<double> *vol = (std::complex<double>*) fft_volume_complex;
-    std::complex<double> *fil = (std::complex<double>*) fft_filter_complex;
-    for (int i = 0; i < size; ++i) {
-      vol[i] *= fil[i];
+
+    // Transform the volume
+    double *volume_in = padded.data();
+    fftw_complex *volume_out = reinterpret_cast<fftw_complex *>(padded.data());
+    fftw_plan volume_forward = fftw_plan_dft_r2c_3d(d, h, w, volume_in, volume_out, FFTW_ESTIMATE);
+    fftw_plan volume_backward = fftw_plan_dft_c2r_3d(d, h, w, volume_out, volume_in, FFTW_ESTIMATE);
+
+    cimg_forXYZ(volume, x, y, z) {
+      padded(x,y,z) = volume(x,y,z);
     }
 
+    fftw_execute(volume_forward);
+    fftw_destroy_plan(volume_forward);
+
+    // Convolve
+    int size = (padded_w * h * d) / (sizeof(std::complex<double>) / sizeof(double));
+    std::complex<double> *complex_volume = reinterpret_cast<std::complex<double>*>(volume_out);
+    std::complex<double> *complex_filter = reinterpret_cast<std::complex<double>*>(filter_out);
+    int i = 0;
+    for (i = 0; i < size; ++i) {
+      complex_volume[i] *= complex_filter[i];
+    }
+    
+    // copy back to volume
     fftw_execute(volume_backward);
-    center_fft(complex_volume, w, h, d);
-    normalise_and_copy(complex_volume, volume);
+    fftw_destroy_plan(volume_backward);
+    normalise_and_copy(padded, volume);
   }
 
 }
