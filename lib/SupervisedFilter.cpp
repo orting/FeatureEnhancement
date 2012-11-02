@@ -30,12 +30,23 @@ SupervisedFilter::~SupervisedFilter() {
 
 // Loads data and classification from dataset, 
 // builds a knn-index which is saved for future use.
-void SupervisedFilter::apply(cimg_library::CImg<short> &volume, std::string dataset_path, size_t nn) {
-  std::cout << "calculating features" << std::endl;
-  this->calculate_features(volume);
+//void SupervisedFilter::apply(cimg_library::CImg<short> &volume, size_t nn) {
+//this->calculate_features(volume);
+//this->classify(volume, nn);
+//}
 
-  std::cout << "classifying" << std::endl;
-  this->classify(volume, dataset_path, nn);
+void SupervisedFilter::apply(cimg_library::CImg<short> &volume, std::string dataset_path, size_t nn) {
+  this->calculate_features(volume);
+  this->load_dataset(dataset_path);
+  flann::Index<flann::L2<short> > index = this->make_index(dataset_path);
+  this->classify(volume, index, nn);
+}
+
+void SupervisedFilter::apply(cimg_library::CImg<short> &volume, std::string dataset_path, std::string index_path, size_t nn) {
+  this->calculate_features(volume);
+  this->load_dataset(dataset_path);
+  flann::Index<flann::L2<short> > index = this->load_index(index_path);
+  this->classify(volume, index, nn);
 }
 
 
@@ -70,7 +81,29 @@ void SupervisedFilter::classify(cimg_library::CImg<short> &volume,
   delete[] distances.ptr();
 }
 
-void SupervisedFilter::classify(cimg_library::CImg<short> &volume, std::string dataset_path, size_t nn) {
+
+void SupervisedFilter::load_dataset(std::string dataset_path) {
+  delete[] this->dataset.ptr();
+  delete[] this->classifications.ptr();
+  flann::load_from_file(this->dataset, dataset_path, "dataset");
+  flann::load_from_file(this->classifications, dataset_path, "classifications");
+}
+
+flann::Index<flann::L2<short> > SupervisedFilter::load_index(std::string index_path) {
+  return flann::Index<flann::L2<short> > (this->dataset, flann::SavedIndexParams(index_path));
+}
+
+
+flann::Index<flann::L2<short> > SupervisedFilter::make_index(std::string save_path) {
+  flann::Index<flann::L2<short> > index (this->dataset, flann::AutotunedIndexParams(0.90, 0, 0, 1));
+  std::cout << "building index\n";
+  index.buildIndex();
+  index.save(save_path + ".index");
+  return index;
+}
+
+
+/*void SupervisedFilter::classify(cimg_library::CImg<short> &volume, std::string dataset_path, size_t nn) {
   delete[] this->dataset.ptr();
   delete[] this->classifications.ptr();
   flann::load_from_file(this->dataset, dataset_path, "dataset");
@@ -82,7 +115,7 @@ void SupervisedFilter::classify(cimg_library::CImg<short> &volume, std::string d
   index.save(dataset_path + ".index");
 
   this->classify(volume, index, nn);
-}
+  }*/
 
 
 // Setup features for selection
