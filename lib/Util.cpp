@@ -1,9 +1,8 @@
 #include "Util.h"
 
 namespace feature_enhancement {
-  /* calculates eigenvalue of 3x3 symmetric matrix. source:
-     https://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices
-  */
+  // calculates eigenvalue of 3x3 symmetric matrix. source:
+  // https://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices
   void calculate_eigenvalues(std::array<double, 6> const &matrix, 
 			     std::array<double, 3> &eigenvalues) {
     double dxx = matrix[0];
@@ -13,7 +12,7 @@ namespace feature_enhancement {
     double dyz = matrix[4];
     double dzz = matrix[5];
 
-    double p(dxy * dxy + dxz * dxz + dyz * dyz);
+    double p = dxy * dxy + dxz * dxz + dyz * dyz;
     if (p == 0) {
       // The matrix is diagonal.
       eigenvalues[0] = dxx;
@@ -24,10 +23,9 @@ namespace feature_enhancement {
       double q((dxx + dyy + dzz) / 3);
       p = (dxx - q)*(dxx - q) + (dyy - q)*(dyy - q) + (dzz - q) * (dzz- q) + 2 * p;
       p = sqrt(p / 6);
-      /* We need to compute
-       * B = (matrix - Identity * q) / p
-       * r = det(B)/2
-       */
+      // We need to compute
+      // B = (matrix - Identity * q) / p
+      // r = det(B)/2
       double b00 = (dxx - q) / p;
       double b11 = (dyy - q) / p;
       double b22 = (dzz - q) / p;
