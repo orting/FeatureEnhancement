@@ -4,7 +4,7 @@
 #include "pechin_wrap.h"
 
 #include "AutomaticFilter.h"
-#include "FeatureMeassure.h"
+#include "FeatureMeasure.h"
 #include "Filter.h"
 #include "Gauss.h"
 #include "Util.h"
