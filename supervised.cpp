@@ -40,8 +40,13 @@ int main(int argc, char *argv[]) {
     filter.add_feature(feature_enhancement::Feature::HessianEig1, 2);
     filter.add_feature(feature_enhancement::Feature::HessianEig2, 0);
     filter.add_feature(feature_enhancement::Feature::HessianEig2, 1);
-    
-    filter.apply(volume, dataset, knn);
+
+    if (index != 0) {
+      filter.apply(volume, dataset, index, knn);
+    }
+    else {
+      filter.apply(volume, dataset, knn);
+    }
 
     if (outfile) {
       volume.save(outfile);
