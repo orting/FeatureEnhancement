@@ -110,10 +110,26 @@ OBJECTS=string_functions.o\
 	ced.o\
 	lib/Util.o\
 	lib/Feature.o\
+	lib/FeatureMeassure.o\
 	lib/Gauss.o\
 	lib/AutomaticFilter.o\
 	lib/SupervisedFilter.o\
 	lib/Classifier.o
+
+TESTOBJECTS=string_functions.o\
+	random_generator.o\
+	nr_eigen.o\
+	file_functions.o\
+	ced.o\
+	lib/Util.o\
+	lib/Feature.o\
+	lib/Gauss.o
+
+DCMVIEWOBJECTS=string_functions.o\
+	random_generator.o\
+	nr_eigen.o\
+	file_functions.o\
+	ced.o
 
 
 supervised: supervised.o ${OBJECTS}
@@ -129,9 +145,17 @@ classify_training: classify_training.o string_functions.o random_generator.o nr_
 	@echo Linking $@ from $<.
 	@g++ classify_training.o string_functions.o random_generator.o nr_eigen.o file_functions.o ced.o ${LIB_DIRS} ${LIBS} -o $@
 
-test: test.o ${OBJECTS}
+test: test.o ${TESTOBJECTS}
 	@echo Linking $@ from $<.
-	@g++ $< ${OBJECTS} ${LIB_DIRS} ${LIBS} -o $@
+	@g++ $< ${TESTOBJECTS} ${LIB_DIRS} ${LIBS} -o $@
+
+dcm_view: dcm_view.o ${DCMVIEWOBJECTS}
+	@echo Linking $@ from $<.
+	@g++ $< ${DCMVIEWOBJECTS} ${LIB_DIRS} ${LIBS} -o $@
+
+get_voxel_values: get_voxel_values.o ${DCMVIEWOBJECTS}
+	@echo Linking $@ from $<.
+	@g++ $< ${DCMVIEWOBJECTS} ${LIB_DIRS} ${LIBS} -o $@
 
 %.o: %.cpp
 	@echo Compiling $@ from $<.
