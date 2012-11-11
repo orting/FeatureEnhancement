@@ -30,6 +30,13 @@ namespace feature_enhancement {
     return volumes[n];
   }
 
+  VolumeList& VolumeList::operator*=(Volume const &rhs) {
+    for (size_t i = 0; i < size(); ++i) {
+      volumes[i] *= rhs;
+    }
+    return *this;
+  }
+
   size_t VolumeList::size() {
     return volumes.size();
   }

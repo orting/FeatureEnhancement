@@ -2,7 +2,7 @@
 #include <functional>
 
 namespace feature_enhancement {
-  typedef std::function<double (double, double, double, double)> FeatureMeassure;
+  typedef std::function<double (double, double, double, double)> FeatureMeasure;
 
   double fissureness_lassen(double const alpha, double const beta, double const gamma,
 			    double eig1, double eig2, double eig3);

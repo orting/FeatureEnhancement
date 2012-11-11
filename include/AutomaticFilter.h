@@ -1,43 +1,29 @@
 #pragma once
-#include "pechin_wrap.h"
-#include "FeatureMeassure.h"
+#include "Transforms.h"
+#include "Volume.h"
+#include "FeatureMeasure.h"
 
 namespace feature_enhancement {
   class AutomaticFilter {
   public:
-    AutomaticFilter();
+    AutomaticFilter(size_t threads=1,
+		    FeatureMeasure f=[&](double voxel, double a, double b, double c) {c=a=b=c; return voxel;});
     ~AutomaticFilter(){};
 
-    void apply(cimg_library::CImg<short> &volume,
-	       cimg_library::CImg<unsigned char> const &segmentation,
+    void apply(Volume &volume,
 	       double threshhold,
-	       int scale = 1,
-	       bool use_fft = false);
+	       int scale = 1);
 
-    void apply(cimg_library::CImg<short> &volume,
-	       double threshhold,
-	       int scale = 1,
-	       bool use_fft = false);
+    // void apply(Volume &volume,
+    // 	       Volume &segmentation,
+    // 	       double threshhold,
+    // 	       int scale = 1);
 
-    void set_featureness(FeatureMeassure feature_meassure);
-
-    //    double fissureness_rikxoort(double voxel_value, double eig1, double eig2, double eig3) const;
-    //    double fissureness_lassen(double voxel_value, double eig1, double eig2, double eig3) const;
-    //    double fissureness_rikxoort_lassen(double voxel_value, double eig1, double eig2, double eig3) const;
+    void set_feature_measure(FeatureMeasure feature_meassure);
 
   private:
-    void apply_no_fft(cimg_library::CImg<short> &volume,
-		      cimg_library::CImg<unsigned char> const &segmentation,
-		      double threshhold,
-		      int scale);
-
-    void apply_fft(cimg_library::CImg<short> &volume,
-		   cimg_library::CImg<unsigned char> const &segmentation,
-		   double threshhold,
-		   int scale);
-    
-    FeatureMeassure feature_meassure;
-
+    FeatureMeasure feature_meassure;
+    FFT fft;
   };
 
 }

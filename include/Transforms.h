@@ -17,7 +17,5 @@ namespace feature_enhancement {
 
   private:
     std::unordered_map<double *, fftw_plan> forward_plans, backward_plans;
-    // void backward(VolumeList< std::complex<double> > &in, VolumeList<double> &out);
-    // void backward(VolumeList2 &volumes);
   };
 }

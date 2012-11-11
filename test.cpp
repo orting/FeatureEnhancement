@@ -4,8 +4,8 @@
 #include <fftw3.h>
 #include "Volume.h"
 #include "Transforms.h"
-//#include "AutomaticFilter.h"
-//#include "FeatureMeasure.h"
+#include "AutomaticFilter.h"
+#include "FeatureMeasure.h"
 
 
 using namespace feature_enhancement;
@@ -22,7 +22,7 @@ int main() {
   	    << "\nstd::complex<double>: " << sizeof(std::complex<double>)
   	    << "\nVolume: " << sizeof(Volume)
   	    << "\nVolumeList: " << sizeof(VolumeList)
-    //  	    << "\nAutomaticFilter: " << sizeof(AutomaticFilter)
+      	    << "\nAutomaticFilter: " << sizeof(AutomaticFilter)
   	    << std::endl;
 
 
@@ -55,13 +55,13 @@ int main() {
     std::cout << "... FFT VolumeList test [FAILED]\n";
   }
 
-  //   std::cout << "Testing AutomaticFilter\n";
-  // if (false // test_automatic_filter()
-  //     ) {
-  //   std::cout << "AutomaticFilter test [OK]\n";
-  // } else {
-  //   std::cout << "AutomaticFilter test [FAILED]\n";
-  // }
+  std::cout << "Testing AutomaticFilter\n";
+  if (test_automatic_filter()
+      ) {
+    std::cout << "AutomaticFilter test [OK]\n";
+  } else {
+    std::cout << "AutomaticFilter test [FAILED]\n";
+  }
     
   return 0;
 }
@@ -204,41 +204,9 @@ bool test_volume_list_transform() {
     }
   }
 
-  // std::cout << "Before forward: \n";
-  // for (size_t x = 0; x < w; ++x) {
-  //   for (size_t y = 0; y < h; ++y) {
-  //     for (size_t z = 0; z < d; ++z) {
-  // 	std::cout << volumes.real_volumes[0](x, y, z) << " ";
-  //     }
-  //     std::cout << "\n";
-  //   }
-  //   std::cout << "\n";
-  // }
-
   FFT fft(4);
   fft.forward(volumes);
-  // std::cout << "After forward: \n";
-  // for (size_t x = 0; x < w; ++x) {
-  //   for (size_t y = 0; y < h; ++y) {
-  //     for (size_t z = 0; z < d/2 +1; ++z) {
-  // 	std::cout << volumes.complex_volumes[0](x, y, z) << " ";
-  //     }
-  //     std::cout << "\n";
-  //   }
-  //   std::cout << "\n";
-  // }
-
   fft.backward(volumes);
-  // std::cout << "After backward: \n";
-  // for (size_t x = 0; x < w; ++x) {
-  //   for (size_t y = 0; y < h; ++y) {
-  //     for (size_t z = 0; z < d; ++z) {
-  // 	std::cout << volumes.real_volumes[0](x, y, z) << " ";
-  //     }
-  //     std::cout << "\n";
-  //   }
-  //   std::cout << "\n";
-  // }
 
 
   k = 0;
@@ -255,30 +223,28 @@ bool test_volume_list_transform() {
       }
     }
   }
+
   return true;
 }
 
-// bool test_automatic_filter() {
-//   size_t w = 512, h = 512, d = 367;
-//   //size_t w = 10, h = 10, d = 10;
-//    filter::Volume<double> vol(w, h, d);
+bool test_automatic_filter() {
+  size_t w = 512, h = 512, d = 367;
+  //size_t w = 20, h = 20, d = 20;
+  Volume vol(w, h, d);
 
-//    for (size_t x = 0; x < w; ++x) {
-//      for (size_t y = 0; y < h; ++y) {
-//        for (size_t z = 0; z < d; ++z) {
-// 	 vol(x, y, z) = static_cast<double>(x * y * z);
-//        }
-//      }
-//    }
+   for (size_t x = 0; x < w; ++x) {
+     for (size_t y = 0; y < h; ++y) {
+       for (size_t z = 0; z < d; ++z) {
+	 vol(x, y, z) = static_cast<double>(x * y * z);
+       }
+     }
+   }
 
-//    feature_enhancement::AutomaticFilter filter(4);
-//   {
-//     using namespace std::placeholders;
-//     auto meassure = std::bind(feature_enhancement::fissureness_rikxoort, -500, 250, _1, _2, _3, _4);
-//     filter.set_featureness(meassure);
-//   }
+   using namespace std::placeholders;
+   auto measure = std::bind(fissureness_rikxoort, -500, 250, _1, _2, _3, _4);
+   AutomaticFilter filter(4, measure);
 
-//   filter.apply(vol, 0.1, 1);
+  filter.apply(vol, 0.1, 1);
 
-//   return true;
-// }
+  return true;
+}

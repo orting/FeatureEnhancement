@@ -17,8 +17,8 @@ namespace feature_enhancement {
   public:
     Volume(size_t width, size_t height, size_t depth);
     Volume(Volume &&tmp);
+    Volume(Volume const &other);
 
-    Volume(Volume const &other) = delete;
     Volume() = delete;
     void operator=(Volume const &other) = delete;
 
@@ -70,6 +70,11 @@ namespace feature_enhancement {
 
     Volume& operator[](size_t n);    
     const Volume& operator[](size_t n) const;
+
+    VolumeList& operator*=(Volume const &rhs);
+    //    Volume& operator*=(double const &rhs);
+    //    Volume& operator*=(std::complex<double> const &rhs);
+
     size_t size();
 
 
@@ -79,6 +84,11 @@ namespace feature_enhancement {
     std::vector<Volume> volumes;
 
   };
+
+  // inline VolumeList operator*(VolumeList lhs, Volume const &rhs) {
+  //   lhs *= rhs;
+  //   return lhs;
+  // }
 
 }
 

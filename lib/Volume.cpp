@@ -35,18 +35,18 @@ namespace feature_enhancement {
       complex_data(reinterpret_cast< std::complex<double>* >(data)),
       free(false),
       domain(Domain::Time)
-  {
-  }
+  {}
 
-  // Volume::Volume(Volume const &other)
-  //   : Volume(other.width, other.height, other.depth) {
-  //   std::copy(other.data, other.data + size, data);
-  //   std::cout << "Volume: Copy constructor called\n";
-  // }
+  Volume::Volume(Volume const &other)
+    : Volume(other.width, other.height, other.depth)
+  {
+    std::copy(other.real_data, other.real_data + real_size, real_data);
+    domain = other.domain;
+  }
 
   Volume::Volume(Volume &&other)
-    : Volume(other.real_data, other.width, other.height, other.depth) {
-  }
+    : Volume(other.real_data, other.width, other.height, other.depth)
+  {}
 
 
   Volume::~Volume() {
@@ -64,7 +64,7 @@ namespace feature_enhancement {
   }
 
   Volume& Volume::operator*=(Volume const &rhs) {
-    if (real_size == rhs.real_size) {
+    if (real_size == rhs.real_size && domain == rhs.domain) {
       if (domain == Domain::Time) {
 	for (size_t x = 0; x < width; ++x) {
 	  for (size_t y = 0; y < height; ++y) {
