@@ -13,11 +13,12 @@ INCLUDE = -I${MY_INC_DIR}
 
 OBJECTS = lib/Volume.o\
 	  lib/VolumeList.o\
-	  lib/Transforms.o
-#	  lib/Gauss.o\
+	  lib/Transforms.o\
+	  lib/Gauss.o\
 	  lib/AutomaticFilter.o\
 	  lib/Util.o\
-	  lib/FeatureMeasure.o
+	  lib/FeatureMeasure.o\
+	  lib/Filter.o
 
 test: test.o ${OBJECTS}
 	@echo g++ $< ${OBJECTS} ${LIB_DIRS} ${LIBS} -o $@

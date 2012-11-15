@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <math.h>
-#include "Filter.h"
 
 namespace feature_enhancement {
   // // 1D
