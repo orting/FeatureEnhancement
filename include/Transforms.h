@@ -15,6 +15,10 @@ namespace feature_enhancement {
     void forward(VolumeList &volumes);
     void backward(VolumeList &volumes);
 
+    void convolve(Volume &volume, Volume &mask);
+    void convolve(VolumeList &volumes, Volume &mask);
+    //void convolve(VolumeList &volumes, VolumeList &mask);
+
   private:
     std::unordered_map<double *, fftw_plan> forward_plans, backward_plans;
   };
