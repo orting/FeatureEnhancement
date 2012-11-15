@@ -1,8 +1,7 @@
-#include <cmath>
 #include <array>
-#include <cstring>
 
 #include "Volume.h"
+#include "VolumeList.h"
 #include "Transforms.h"
 #include "AutomaticFilter.h"
 #include "FeatureMeasure.h"
@@ -11,22 +10,16 @@
 #include "Util.h"
 
 namespace feature_enhancement {
+  Filter3D dxx = dxx3D, dxy = dxy3D, dxz = dxz3D, dyy = dyy3D, dyz = dyz3D, dzz = dzz3D;
 
   AutomaticFilter::AutomaticFilter(size_t threads, FeatureMeasure f):
     feature_meassure(f),
     fft(threads)
   {}
 
-  // void AutomaticFilter::apply(Volume<double> &volume, 
-  // 			      Volume<unsigned char> const &segmentation,
-  // 			      double threshhold,
-  // 			      int scale) {
-  // }
-
   void AutomaticFilter::apply(Volume &volume, 
 			      double threshhold,
 			      int scale) {
-
     Volume copy(volume);
     fft.forward(copy);
     VolumeList filters(6, volume.width, volume.height, volume.depth);
@@ -36,9 +29,7 @@ namespace feature_enhancement {
       kernel(ff[i], scale, filters[i]);
     }
 
-    fft.forward(filters);
-    filters *= copy;
-    fft.backward(filters);
+    fft.convolve(filters, copy);
 
     std::array<double, 6> hessian;
     std::array<double, 3> eigenvalues = {{0,0,0}};
@@ -63,8 +54,6 @@ namespace feature_enhancement {
       }
     }
   }
-
-
 
   void AutomaticFilter::set_feature_measure(FeatureMeasure f) {
     this->feature_meassure = f;
