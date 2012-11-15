@@ -5,71 +5,71 @@ namespace feature_enhancement {
   //
   // 1D 
   //
-  double gauss(double x, int scale) {
-    static double const const_normalise = 0.3989422804014327; // = 1 / sqrt(2*pi)
-    return (const_normalise / scale) * exp((-(x*x)) / (2 * scale * scale));
-  }
+  // double gauss(double x, int scale) {
+  //   static double const const_normalise = 0.3989422804014327; // = 1 / sqrt(2*pi)
+  //   return (const_normalise / scale) * exp((-(x*x)) / (2 * scale * scale));
+  // }
 
-  // 1D first order derivatives
-  double dx(double x, int scale) {
-    static double const const_normalise = 0.3989422804014327; // = 1 / sqrt(2*pi)
-    double scale_squared = scale * scale;
-    double scale_cubed = scale_squared * scale;
-    return 
-      -x * 
-      (const_normalise / scale_cubed) * 
-      exp((-(x*x)) / (2 * scale_squared));
-  }
+  // // 1D first order derivatives
+  // double dx(double x, int scale) {
+  //   static double const const_normalise = 0.3989422804014327; // = 1 / sqrt(2*pi)
+  //   double scale_squared = scale * scale;
+  //   double scale_cubed = scale_squared * scale;
+  //   return 
+  //     -x * 
+  //     (const_normalise / scale_cubed) * 
+  //     exp((-(x*x)) / (2 * scale_squared));
+  // }
 
 
-  //
-  // 2D
-  //
-  double gauss(double x, double y, int scale) {
-    static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
-    double scale_squared = scale * scale;
-    return (const_normalise / scale_squared) * exp((-(x*x) -(y*y)) / (2 * scale_squared));
-  }
+  // //
+  // // 2D
+  // //
+  // double gauss(double x, double y, int scale) {
+  //   static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
+  //   double scale_squared = scale * scale;
+  //   return (const_normalise / scale_squared) * exp((-(x*x) -(y*y)) / (2 * scale_squared));
+  // }
 
-  // 2D first order gaussian derivatives
-  double dx(double x, double y, int scale) {
-    static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
-    double scale_squared = scale * scale;
-    double scale_fourth = scale_squared * scale_squared;
-    return 
-      -x * 
-      (const_normalise / scale_fourth) * 
-      exp((-(x*x) - (y*y)) / (2 * scale_squared));
-  }
+  // // 2D first order gaussian derivatives
+  // double dx(double x, double y, int scale) {
+  //   static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
+  //   double scale_squared = scale * scale;
+  //   double scale_fourth = scale_squared * scale_squared;
+  //   return 
+  //     -x * 
+  //     (const_normalise / scale_fourth) * 
+  //     exp((-(x*x) - (y*y)) / (2 * scale_squared));
+  // }
 
-  double dy(double x, double y, int scale) {
-    return dx(y, x, scale);
-  }
+  // double dy(double x, double y, int scale) {
+  //   return dx(y, x, scale);
+  // }
 
-  // 2D second order gaussian derivatives
-  double dxx(double x, double y, int scale) {
-    static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
-    double scale_squared = scale * scale;
-    double scale_sixth = scale_squared * scale_squared * scale_squared;
-    return 
-      (x*x - scale_squared) * 
-      (const_normalise / scale_sixth) * 
-      exp((-(x*x) - (y*y)) / (2 * scale_squared));
-  }
+  // // 2D second order gaussian derivatives
+  // double dxx(double x, double y, int scale) {
+  //   static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
+  //   double scale_squared = scale * scale;
+  //   double scale_sixth = scale_squared * scale_squared * scale_squared;
+  //   return 
+  //     (x*x - scale_squared) * 
+  //     (const_normalise / scale_sixth) * 
+  //     exp((-(x*x) - (y*y)) / (2 * scale_squared));
+  // }
 
-  double dyy(double x, double y, int scale) {
-    return dxx(y, x, scale);
-  }
+  // double dyy(double x, double y, int scale) {
+  //   return dxx(y, x, scale);
+  // }
 
-  double dxy(double x, double y, int scale) {
-    static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
-    double scale_squared = scale * scale;
-    double scale_sixth = scale_squared * scale_squared * scale_squared;
-    return 
-      x * y *
-      (const_normalise / scale_sixth) * 
-      exp((-(x*x) - (y*y)) / (2 * scale_squared));
-  }
+  // double dxy(double x, double y, int scale) {
+  //   static double const const_normalise = 0.15915494309189535; // = 1 / (2*pi)
+  //   double scale_squared = scale * scale;
+  //   double scale_sixth = scale_squared * scale_squared * scale_squared;
+  //   return 
+  //     x * y *
+  //     (const_normalise / scale_sixth) * 
+  //     exp((-(x*x) - (y*y)) / (2 * scale_squared));
+  // }
 
   
   //

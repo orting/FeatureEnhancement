@@ -27,6 +27,4 @@ namespace feature_enhancement {
   double dxy3D(double x, double y, double z, int scale);
   double dxz3D(double x, double y, double z, int scale);
   double dyz3D(double x, double y, double z, int scale);
-
-  Filter3D dxx = dxx3D, dxy = dxy3D, dxz = dxz3D, dyy = dyy3D, dyz = dyz3D, dzz = dzz3D;
 }
