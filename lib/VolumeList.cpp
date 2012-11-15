@@ -2,7 +2,7 @@
 #include <complex>
 #include <fftw3.h>
 #include <cstring>
-#include "Volume.h"
+#include "VolumeList.h"
 
 namespace feature_enhancement {
   VolumeList::VolumeList(size_t n, size_t width, size_t height, size_t depth)
