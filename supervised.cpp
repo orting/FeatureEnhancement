@@ -15,21 +15,19 @@ int main(int argc, char *argv[]) {
   
   //  const char* seg_infile  = cimg_option("-s", (char*)0, "Input volume file with region of interest segmented,"
   //					"expects unsigned char values");
-  if (infile == 0) {
+  if (infile == 0 || dataset == 0) {
     std::cerr << "Not enough arguments. Use -h to get help" << std::endl;
     return -1;
   }
-  cimg_library::CImg<short> volume(infile);
-  if (dataset == 0) {
-    cimg_forXYZ(volume, x, y, z) {
-      if (volume(x,y,z) < 15) {
-	volume(x,y,z) = 0;
-      }
-    }
-    volume.display();
+
+  cimg_library::CImg<short> cimg_volume(infile);
+  Volume volume(cimg_volume.width(), cimg_volume.height(), cimg_volume.depth());
+  std::cout << "Copying to Volume\n";
+  cimg_forXYZ(cimg_volume, x, y, z) {
+    volume(x, y, z) = cimg_volume(x, y, z);
   }
-  else {
-    feature_enhancement::SupervisedFilter filter;
+
+    feature_enhancement::SupervisedFilter filter(4);
 
     filter.add_feature(feature_enhancement::Feature::Identity, 0);
     filter.add_feature(feature_enhancement::Feature::GaussDyz, 0);
@@ -48,10 +46,18 @@ int main(int argc, char *argv[]) {
       filter.apply(volume, dataset, knn);
     }
 
-    if (outfile) {
-      volume.save(outfile);
+    std::cout << "Copying from Volume\n";
+    cimg_forXYZ(cimg_volume, x, y, z) {
+      cimg_volume(x, y, z) = volume(x, y, z);
     }
-  }
+
+    if (outfile) {
+      cimg_volume.save(outfile);
+    }
+    else {
+      cimg_volume.display();
+    }
+
 
   return 0;
 }
