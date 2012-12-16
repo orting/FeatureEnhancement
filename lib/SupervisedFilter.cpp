@@ -7,18 +7,21 @@
 #include <flann/flann.hpp>
 #include <flann/io/hdf5.h>
 
-#include "pechin_wrap.h"
 
 #include "Feature.h"
 #include "Filter.h"
 #include "Gauss.h"
 #include "SupervisedFilter.h"
 #include "Util.h"
+#include "Transforms.h"
+#include "Volume.h"
+#include "VolumeList.h"
 
 using namespace feature_enhancement;
+Filter3D gauss = gauss3D, dx = dx3D, dy = dy3D, dz = dz3D, dxx = dxx3D, dxy = dxy3D, dxz = dxz3D, dyy = dyy3D, dyz = dyz3D, dzz = dzz3D;
 
-SupervisedFilter::SupervisedFilter():
-  feature_matrix(), calculated_features(), dataset(), classifications(), query()
+SupervisedFilter::SupervisedFilter(size_t threads):
+  feature_matrix(), calculated_features(), dataset(), classifications(), query(), fft(threads)
 {}
 
 SupervisedFilter::~SupervisedFilter() {
@@ -27,22 +30,14 @@ SupervisedFilter::~SupervisedFilter() {
   delete[] this->classifications.ptr();  
 }
 
-
-// Loads data and classification from dataset, 
-// builds a knn-index which is saved for future use.
-//void SupervisedFilter::apply(cimg_library::CImg<short> &volume, size_t nn) {
-//this->calculate_features(volume);
-//this->classify(volume, nn);
-//}
-
-void SupervisedFilter::apply(cimg_library::CImg<short> &volume, std::string dataset_path, size_t nn) {
+void SupervisedFilter::apply(Volume &volume, std::string dataset_path, size_t nn) {
   this->calculate_features(volume);
   this->load_dataset(dataset_path);
   flann::Index<flann::L2<short> > index = this->make_index(dataset_path);
   this->classify(volume, index, nn);
 }
 
-void SupervisedFilter::apply(cimg_library::CImg<short> &volume, std::string dataset_path, std::string index_path, size_t nn) {
+void SupervisedFilter::apply(Volume &volume, std::string dataset_path, std::string index_path, size_t nn) {
   this->calculate_features(volume);
   this->load_dataset(dataset_path);
   flann::Index<flann::L2<short> > index = this->load_index(index_path);
@@ -50,7 +45,7 @@ void SupervisedFilter::apply(cimg_library::CImg<short> &volume, std::string data
 }
 
 
-void SupervisedFilter::classify(cimg_library::CImg<short> &volume, 
+void SupervisedFilter::classify(Volume &volume, 
 				flann::Index<flann::L2<short> > &index, 
 				size_t nn) {
   // Need same number of points in dataset and classification
@@ -68,15 +63,19 @@ void SupervisedFilter::classify(cimg_library::CImg<short> &volume,
 
   std::cout << "Making probability image\n";
   size_t row = 0;
-  cimg_forXYZ(volume, x, y, z) {
-    short feature_neighbours = 0;
-    for (size_t j = 0; j < nn; ++j) {
-      feature_neighbours += this->classifications[indices[row][j]][0];
+  for (size_t x = 0; x < volume.width; ++x) {
+    for (size_t y = 0; y < volume.height; ++y) {
+      for (size_t z = 0; z < volume.depth; ++z) {
+	int feature_neighbours = 0;
+	for (size_t j = 0; j < nn; ++j) {
+	  feature_neighbours += this->classifications[indices[row][j]][0];
+	}
+	volume(x,y,z) = feature_neighbours; // What is a good meassure here?
+	++row;
+      }
     }
-    volume(x,y,z) = feature_neighbours; // What is a good meassure here?
-    ++row;
   }
-
+  
   delete[] indices.ptr();
   delete[] distances.ptr();
 }
@@ -103,33 +102,19 @@ flann::Index<flann::L2<short> > SupervisedFilter::make_index(std::string save_pa
 }
 
 
-/*void SupervisedFilter::classify(cimg_library::CImg<short> &volume, std::string dataset_path, size_t nn) {
-  delete[] this->dataset.ptr();
-  delete[] this->classifications.ptr();
-  flann::load_from_file(this->dataset, dataset_path, "dataset");
-  flann::load_from_file(this->classifications, dataset_path, "classifications");
-  
-  flann::Index<flann::L2<short> > index(this->dataset, flann::AutotunedIndexParams(0.68, 0, 0, 1));
-  std::cout << "building index\n";
-  index.buildIndex();
-  index.save(dataset_path + ".index");
-
-  this->classify(volume, index, nn);
-  }*/
-
-
 // Setup features for selection
+// Brug et map
 void SupervisedFilter::add_feature(Feature feature, size_t scale) {
   if (scale < MAX_SCALE) {
     this->feature_matrix[feature][scale] = true;
   }
 }
+
 void SupervisedFilter::remove_feature(Feature feature, size_t scale) {
   if (scale < MAX_SCALE) {
     this->feature_matrix[feature][scale] = false;
   }
 }
-
 
 
 size_t SupervisedFilter::get_feature_index(Feature f, size_t scale) {
@@ -148,20 +133,23 @@ size_t SupervisedFilter::get_feature_index(Feature f, size_t scale) {
   return i;
 }
 
-// Store the calculated feature in a open temporary file, the filehandle is stored in
-// this->stored. Should abstract the storage so disk is only used when RAM is insufficient
-void SupervisedFilter::store(Feature f, size_t scale, cimg_library::CImg<short> const &vol) {
+
+void SupervisedFilter::store(Feature f, size_t scale, Volume const &vol) {
   size_t i = get_feature_index(f, scale);
   size_t j = 0;
-  cimg_forXYZ(vol, x, y, z) {
-    this->query[j++][i] = vol(x,y,z);
+  for (size_t x = 0; x < vol.width; ++x) {
+    for (size_t y = 0; y < vol.height; ++y) {
+      for (size_t z = 0; z < vol.depth; ++z) {
+	this->query[j++][i] = vol(x,y,z);
+      }
+    }
   }
 }
 
 
-
-void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
-  this->allocate_query(volume.width() * volume.height() * volume.depth());
+void SupervisedFilter::calculate_features(Volume &volume) {
+  this->allocate_query(volume.size);
+  Volume copy(volume);
 
   if (this->feature_matrix[Feature::Identity][0]) {
     this->store(Feature::Identity, 0, volume);
@@ -169,24 +157,28 @@ void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
 
   for (size_t i = 0; i < MAX_SCALE; ++i) {
     size_t scale = std::pow(2, i); // Temporary hack, not clear what is actually needed
-    int j;
+    size_t j = 0;
     // Gradient
     if (this->feature_matrix[Feature::Gradient][i]) {
-      cimg_library::CImgList<short> first_order(3, volume);
-      cimg_library::CImg<short> gradient(volume);
-      filter::apply(first_order(0), scale, gauss::dx);
-      filter::apply(first_order(1), scale, gauss::dy);
-      filter::apply(first_order(2), scale, gauss::dz);
-      cimg_forXYZ(gradient, x, y, z) {
-	gradient(x,y,z) = calculate_gradient(first_order(0)(x,y,z), 
-					     first_order(1)(x,y,z), 
-					     first_order(2)(x,y,z));
+      Volume gradient(volume.width, volume.height, volume.depth);
+      VolumeList first_order(3, copy);
+      kernel(dx, scale, first_order[0]);
+      kernel(dy, scale, first_order[1]);
+      kernel(dz, scale, first_order[2]);
+      fft.convolve(first_order, copy);
+      
+      for (size_t x = 0; x < gradient.width; ++x) {
+	for (size_t y = 0; y < gradient.height; ++y) {
+	  for (size_t z = 0; z < gradient.depth; ++z) {
+	    gradient(x,y,z) = calculate_gradient(first_order[0](x,y,z), first_order[1](x,y,z), first_order[2](x,y,z));
+	  }
+	}
       }
       this->store(Feature::Gradient, i, gradient);
       j = 0;
       for (Feature f = Feature::GaussDx; f <= Feature::GaussDz; ++f, ++j) {
 	if (this->feature_matrix[f][i]) {
-	  this->store(f, i, first_order(j));
+	  this->store(f, i, first_order[j]);
 	}
       }
     }
@@ -195,70 +187,83 @@ void SupervisedFilter::calculate_features(cimg_library::CImg<short> &volume) {
     if (this->feature_matrix[Feature::HessianEig1][i] ||
 	this->feature_matrix[Feature::HessianEig2][i] || 
 	this->feature_matrix[Feature::HessianEig3][i] ) {
-      cimg_library::CImgList<short> second_order(6, volume);
-      filter::apply(second_order(0), scale, gauss::dxx);
-      filter::apply(second_order(1), scale, gauss::dxy);
-      filter::apply(second_order(2), scale, gauss::dxz);
-      filter::apply(second_order(3), scale, gauss::dyy);
-      filter::apply(second_order(4), scale, gauss::dyz);
-      filter::apply(second_order(5), scale, gauss::dzz);
+
+      VolumeList second_order(6, copy);
+      std::array<Filter3D, 6> second_order_functions = {{dxx, dxy, dxz, dyy, dyz, dzz}};
+      for (size_t i = 0; i < second_order_functions.size(); ++i) {
+	kernel(second_order_functions[i], scale, second_order[i]);
+      }
+      fft.convolve(second_order, copy);
 
       std::array<double, 6> hessian;
       std::array<double, 3> eigenvalues;
-      cimg_library::CImgList<short> eigens(3);
-      j = 0;
-      for (Feature f = Feature::HessianEig1; f <= Feature::HessianEig3; ++f, ++j) {
-	if (this->feature_matrix[f][i]) {
-	  eigens(j).resize(volume);
-	}
-      }
-      cimg_forXYZ(second_order(0), x, y, z) {
-	for (j = 0; j < 6; ++j) {
-	  hessian[j] = second_order(j)(x,y,z);
-	}
-	calculate_eigenvalues(hessian, eigenvalues);
+      VolumeList eigens(3, copy);
 
-	j = 0;
-	for (Feature f = Feature::HessianEig1; f <= Feature::HessianEig3; ++f, ++j) {
-	  if (this->feature_matrix[f][i]) {
-	    eigens(j)(x,y,z) = eigenvalues[j];
+      for (size_t x = 0; x < copy.width; ++x) {
+	for (size_t y = 0; y < copy.height; ++y) {
+	  for (size_t z = 0; z < copy.depth; ++z) {
+	    for (j = 0; j < 6; ++j) {
+	      hessian[j] = second_order[j](x,y,z);
+	    }
+	    calculate_eigenvalues(hessian, eigenvalues);
+	    j = 0;
+	    for (Feature f = Feature::HessianEig1; f <= Feature::HessianEig3; ++f, ++j) {
+	      if (this->feature_matrix[f][i]) {
+		eigens[j](x,y,z) = eigenvalues[j];
+	      }
+	    }	    
 	  }
 	}
       }
-      
+  
       j  = 0;
       for (Feature f = Feature::HessianEig1; f <= Feature::HessianEig3; ++f, ++j) {
 	if (this->feature_matrix[f][i]) {
-	  this->store(f, i, eigens(j));
+	  this->store(f, i, eigens[j]);
 	}
       }
 
       j = 0;
       for (Feature f = Feature::GaussDxx; f <= Feature::GaussDzz; ++f, ++j) {
 	if (this->feature_matrix[f][i]) {
-	  this->store(f, i, second_order(j));
+	  this->store(f, i, second_order[j]);
 	}
       }
     }
     // I really need to find a nice way of doing this
-    std::vector<double(*)(double,double,double,int)> gfs;
-    gfs.resize(Feature::GaussDzz + 1);
-    gfs[Feature::Gauss] = &gauss::gauss;
-    gfs[Feature::GaussDx] = &gauss::dx;
-    gfs[Feature::GaussDy] = &gauss::dy;
-    gfs[Feature::GaussDz] = &gauss::dz;
-    gfs[Feature::GaussDxx] = &gauss::dxx;
-    gfs[Feature::GaussDxy] = &gauss::dxy;
-    gfs[Feature::GaussDxz] = &gauss::dxz;
-    gfs[Feature::GaussDyy] = &gauss::dyy;
-    gfs[Feature::GaussDyz] = &gauss::dyz;
-    gfs[Feature::GaussDzz] = &gauss::dzz;
+    std::vector<Filter3D> ff;
+    ff.resize(Feature::GaussDzz + 1);
+    ff[Feature::Gauss] = gauss;
+    ff[Feature::GaussDx] = dx;
+    ff[Feature::GaussDy] = dy;
+    ff[Feature::GaussDz] = dz;
+    ff[Feature::GaussDxx] = dxx;
+    ff[Feature::GaussDxy] = dxy;
+    ff[Feature::GaussDxz] = dxz;
+    ff[Feature::GaussDyy] = dyy;
+    ff[Feature::GaussDyz] = dyz;
+    ff[Feature::GaussDzz] = dzz;
 
+    j = 0;
     for (Feature f = Feature::Gauss; f <= Feature::GaussDzz; ++f) {
       if (this->feature_matrix[f][i] && !this->calculated_features[f][i]) {
-	cimg_library::CImg<short> current(volume);
-	filter::apply(current, scale, *(gfs[f]));
-	this->store(f, i, current);
+	++j;
+      }
+    }
+    if (j > 0) {
+      VolumeList missing(j, copy);
+      j = 0;
+      for (Feature f = Feature::Gauss; f <= Feature::GaussDzz; ++f) {
+	if (this->feature_matrix[f][i] && !this->calculated_features[f][i]) {
+	  kernel(ff[f], scale, missing[j++]);
+	}
+      }
+      fft.convolve(missing, copy);
+      j = 0;
+      for (Feature f = Feature::Gauss; f <= Feature::GaussDzz; ++f) {
+	if (this->feature_matrix[f][i] && !this->calculated_features[f][i]) {
+	  this->store(f, i, missing[j++]);
+	}
       }
     }
   }
