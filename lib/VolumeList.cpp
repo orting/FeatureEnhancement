@@ -5,6 +5,10 @@
 #include "VolumeList.h"
 
 namespace feature_enhancement {
+  VolumeList::VolumeList(size_t n, Volume const &vol)
+    : VolumeList(n, vol.width, vol.height, vol.depth)
+  {}
+    
   VolumeList::VolumeList(size_t n, size_t width, size_t height, size_t depth)
     : volume_size_complex(width * height * (depth/2 + 1)),
       volume_size_real(2 * volume_size_complex),
