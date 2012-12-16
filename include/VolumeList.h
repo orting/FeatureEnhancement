@@ -10,6 +10,7 @@ namespace feature_enhancement {
   class VolumeList {
     friend class FFT;
   public:
+    VolumeList(size_t n, Volume const &vol);
     VolumeList(size_t n, size_t width, size_t height, size_t depth);
     ~VolumeList();
 
