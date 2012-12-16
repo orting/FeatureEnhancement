@@ -4,7 +4,8 @@ MY_INC_DIR = include
 MY_LIB_DIR = lib
 
 LIB_DIRS = -L${MY_LIB_DIR}
-LIBS =  -lfftw3_threads\
+LIBS =  -lhdf5\
+	-lfftw3_threads\
 	-lfftw3\
 	-lm\
 	-lpthread
@@ -15,10 +16,12 @@ OBJECTS = lib/Volume.o\
 	  lib/VolumeList.o\
 	  lib/Transforms.o\
 	  lib/Gauss.o\
-	  lib/AutomaticFilter.o\
 	  lib/Util.o\
+	  lib/Feature.o\
 	  lib/FeatureMeasure.o\
-	  lib/Filter.o
+	  lib/Filter.o\
+	  lib/AutomaticFilter.o\
+	  lib/SupervisedFilter.o
 
 test: test.o ${OBJECTS}
 	@echo g++ $< ${OBJECTS} ${LIB_DIRS} ${LIBS} -o $@
